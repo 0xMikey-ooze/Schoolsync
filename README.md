@@ -1,8 +1,22 @@
 # SchoolSync 🔄
 
-**Securely sync student data from PowerSchool into Capsule — without IT department approval.**
+**Securely sync student data from any SIS into Capsule — without IT department approval.**
 
-Chrome extension that watches PowerSchool pages as you browse and automatically extracts student roster, gradebook, and attendance data into your Capsule.
+Chrome extension that watches SIS pages as you browse and automatically extracts student roster, gradebook, and attendance data into your Capsule.
+
+## Supported SIS Platforms
+
+| Platform | Market Share | Status |
+|---|---|---|
+| **PowerSchool** | #1 (45M+ students) | ✅ Full support (roster, gradebook, attendance, CSV export) |
+| **Infinite Campus** | #2 (8M+ students) | ✅ Roster + student search |
+| **Skyward** | #3 (popular in TX, WI) | ✅ Roster + student browse |
+| **Clever** | Middleware (95K+ schools) | ✅ Roster + card views |
+| **ClassLink** | Middleware / OneRoster | ✅ Roster + grid views |
+| **Aeries** | Popular in CA | ✅ Roster + student lists |
+| **Genesis** | Popular in NJ/NY | ✅ Roster + student lists |
+| **Schoology** | LMS (PowerSchool unified) | ✅ Roster + member lists |
+| **Canvas** | LMS (Instructure) | ✅ People + gradebook |
 
 ## Features
 
@@ -29,7 +43,7 @@ Chrome extension that watches PowerSchool pages as you browse and automatically 
 - **No PII in chrome.storage** — only SHA-256 hashes for diffing
 - **Token in memory only** — encrypted copy on disk, decrypted per-session
 - **HTTPS only** — all Capsule API calls over TLS
-- **Minimal permissions** — only activates on `*.powerschool.com`
+- **Minimal permissions** — only activates on known SIS domains
 - **No analytics, no telemetry, no tracking**
 
 ## Install (Development)
@@ -51,11 +65,19 @@ Chrome extension that watches PowerSchool pages as you browse and automatically 
 
 ```
 content/detector.js     — Detects PowerSchool page type
-content/parsers/        — Page-specific DOM parsers
-  ├── roster.js         — Class roster tables
+content/parsers/        — SIS-specific DOM parsers
+  ├── roster.js         — PowerSchool class roster tables
   ├── export-csv.js     — CSV file parsing (Quick Export)
   ├── gradebook.js      — Grade grids
-  └── attendance.js     — Attendance records
+  ├── attendance.js     — Attendance records
+  ├── infinite-campus.js — Infinite Campus parser
+  ├── skyward.js        — Skyward parser
+  ├── clever.js         — Clever portal parser
+  ├── classlink.js      — ClassLink / OneRoster parser
+  ├── aeries.js         — Aeries SIS parser
+  ├── genesis.js        — Genesis SIS parser
+  ├── schoology.js      — Schoology LMS parser
+  └── canvas.js         — Canvas LMS parser
 background/             — Service worker (sync orchestration)
 lib/                    — Crypto, storage, Capsule API client
 popup/                  — Settings + sync dashboard UI

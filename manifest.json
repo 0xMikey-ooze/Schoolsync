@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SchoolSync",
   "version": "1.0.0",
-  "description": "Securely sync student roster data from PowerSchool into Capsule. Zero API keys, zero IT department.",
+  "description": "Securely sync student roster data from any SIS into Capsule. Supports PowerSchool, Infinite Campus, Skyward, Clever, ClassLink, Aeries, Genesis, Schoology, Canvas.",
   "permissions": [
     "storage",
     "alarms",
@@ -10,7 +10,16 @@
   ],
   "host_permissions": [
     "https://*.powerschool.com/*",
-    "https://*.powerschool.com:*/*"
+    "https://*.powerschool.com:*/*",
+    "https://*.infinitecampus.com/*",
+    "https://*.skyward.com/*",
+    "https://*.clever.com/*",
+    "https://*.classlink.com/*",
+    "https://*.oneroster.com/*",
+    "https://*.aeries.net/*",
+    "https://*.genesisedu.com/*",
+    "https://*.schoology.com/*",
+    "https://*.instructure.com/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
@@ -20,7 +29,16 @@
     {
       "matches": [
         "https://*.powerschool.com/*",
-        "https://*.powerschool.com:*/*"
+        "https://*.powerschool.com:*/*",
+        "https://*.infinitecampus.com/*",
+        "https://*.skyward.com/*",
+        "https://*.clever.com/*",
+        "https://*.classlink.com/*",
+        "https://*.oneroster.com/*",
+        "https://*.aeries.net/*",
+        "https://*.genesisedu.com/*",
+        "https://*.schoology.com/*",
+        "https://*.instructure.com/*"
       ],
       "js": ["src/content/detector.js"],
       "css": ["src/content/badge.css"],
@@ -40,6 +58,23 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/parsers/*.js"],
+      "matches": [
+        "https://*.powerschool.com/*",
+        "https://*.infinitecampus.com/*",
+        "https://*.skyward.com/*",
+        "https://*.clever.com/*",
+        "https://*.classlink.com/*",
+        "https://*.oneroster.com/*",
+        "https://*.aeries.net/*",
+        "https://*.genesisedu.com/*",
+        "https://*.schoology.com/*",
+        "https://*.instructure.com/*"
+      ]
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://*.capsule.ai https://localhost:*;"
   }

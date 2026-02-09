@@ -6,7 +6,7 @@
 (async () => {
   'use strict';
 
-  // Only run on actual PowerSchool pages (not login, not error pages)
+  // Only run on actual SIS pages (not login, not error pages)
   if (document.querySelector('.login-page, #loginForm, .errorPage')) return;
 
   const PAGE_TYPES = {
@@ -18,16 +18,34 @@
   };
 
   /**
-   * Detect which PowerSchool page we're on.
+   * Detect which SIS platform we're on.
+   * @returns {string}
+   */
+  function detectSIS() {
+    const host = window.location.hostname.toLowerCase();
+    if (host.includes('powerschool')) return 'powerschool';
+    if (host.includes('infinitecampus') || host.includes('campus')) return 'infinite-campus';
+    if (host.includes('skyward')) return 'skyward';
+    if (host.includes('clever')) return 'clever';
+    if (host.includes('classlink') || host.includes('oneroster')) return 'classlink';
+    if (host.includes('aeries')) return 'aeries';
+    if (host.includes('genesis')) return 'genesis';
+    if (host.includes('schoology')) return 'schoology';
+    if (host.includes('instructure') || host.includes('canvas')) return 'canvas';
+    return 'generic';
+  }
+
+  /**
+   * Detect which page type we're on.
    * @returns {string}
    */
   function detectPageType() {
     const path = window.location.pathname.toLowerCase();
 
     if (/export|quickexport|data.?export/i.test(path)) return PAGE_TYPES.EXPORT;
-    if (/gradebook|scores|assignment/i.test(path)) return PAGE_TYPES.GRADEBOOK;
+    if (/gradebook|scores|assignment|grades/i.test(path)) return PAGE_TYPES.GRADEBOOK;
     if (/attendance/i.test(path)) return PAGE_TYPES.ATTENDANCE;
-    if (/roster|studentlist|students\/list|classroster/i.test(path)) return PAGE_TYPES.ROSTER;
+    if (/roster|studentlist|students|classroster|people|users|members|enrollment|census/i.test(path)) return PAGE_TYPES.ROSTER;
 
     // Heuristic: page has a large table with student-looking data
     const tables = document.querySelectorAll('table');
@@ -41,6 +59,8 @@
     return PAGE_TYPES.UNKNOWN;
   }
 
+  const sisType = detectSIS();
+
   const pageType = detectPageType();
   if (pageType === PAGE_TYPES.UNKNOWN) return;
 
@@ -51,6 +71,7 @@
   chrome.runtime.sendMessage({
     type: 'PAGE_DETECTED',
     pageType,
+    sisType,
     url: window.location.href,
     title: document.title,
   });
@@ -83,35 +104,43 @@
    */
   async function parsePage(type) {
     try {
+      // For non-PowerSchool SIS, use their specific parser for roster
+      if (sisType !== 'powerschool' && sisType !== 'generic') {
+        const parser = await importSISParser(sisType);
+        if (parser) {
+          const students = parser.parseRoster();
+          return { pageType: 'roster', data: students, count: students.length, sisType };
+        }
+      }
+
       switch (type) {
         case PAGE_TYPES.ROSTER: {
           const { parseRoster } = await importRosterParser();
           const students = parseRoster();
-          return { pageType: type, data: students, count: students.length };
+          return { pageType: type, data: students, count: students.length, sisType };
         }
         case PAGE_TYPES.GRADEBOOK: {
           const { parseGradebook } = await importGradebookParser();
           const grades = parseGradebook();
-          return { pageType: type, data: grades, count: grades.length };
+          return { pageType: type, data: grades, count: grades.length, sisType };
         }
         case PAGE_TYPES.ATTENDANCE: {
           const { parseAttendance } = await importAttendanceParser();
           const records = parseAttendance();
-          return { pageType: type, data: records, count: records.length };
+          return { pageType: type, data: records, count: records.length, sisType };
         }
         case PAGE_TYPES.EXPORT: {
           const { findCSVOnPage } = await importCSVParser();
           const csvSource = findCSVOnPage();
           if (csvSource && !csvSource.startsWith('http')) {
-            // Inline CSV text
             const { parseExportCSV } = await importCSVParser();
             const students = parseExportCSV(csvSource);
-            return { pageType: type, data: students, count: students.length };
+            return { pageType: type, data: students, count: students.length, sisType };
           }
-          return { pageType: type, data: null, count: 0, csvLink: csvSource };
+          return { pageType: type, data: null, count: 0, csvLink: csvSource, sisType };
         }
         default:
-          return { pageType: type, data: null, count: 0 };
+          return { pageType: type, data: null, count: 0, sisType };
       }
     } catch (err) {
       return { pageType: type, data: null, count: 0, error: err.message };
@@ -178,5 +207,24 @@
   }
   async function importCSVParser() {
     return import(chrome.runtime.getURL('src/content/parsers/export-csv.js'));
+  }
+  async function importSISParser(sis) {
+    const parserMap = {
+      'infinite-campus': 'infinite-campus.js',
+      'skyward': 'skyward.js',
+      'clever': 'clever.js',
+      'classlink': 'classlink.js',
+      'aeries': 'aeries.js',
+      'genesis': 'genesis.js',
+      'schoology': 'schoology.js',
+      'canvas': 'canvas.js',
+    };
+    const file = parserMap[sis];
+    if (!file) return null;
+    try {
+      return await import(chrome.runtime.getURL(`src/content/parsers/${file}`));
+    } catch {
+      return null;
+    }
   }
 })();
