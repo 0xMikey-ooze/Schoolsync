@@ -24,6 +24,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       triggerSync(msg.tabId, msg.passphrase).then(sendResponse);
       return true;
 
+    case 'TRIGGER_DEEP_SYNC':
+      syncStudentData(msg.students, msg.passphrase).then(sendResponse);
+      return true;
+
     case 'OPEN_POPUP':
       // Can't programmatically open popup in MV3, but can set badge
       if (sender.tab?.id) {

@@ -166,25 +166,116 @@ async function detectCurrentPage() {
     const result = await chrome.tabs.sendMessage(tab.id, { type: 'PARSE_PAGE' }).catch(() => null);
 
     if (result && result.count > 0) {
+      const sis = result.sisType ? ` (${result.sisType})` : '';
       const labels = {
-        roster: `📋 Roster: ${result.count} students`,
-        export: `📥 Export: ${result.count} students`,
-        gradebook: `📊 Gradebook: ${result.count} students`,
-        attendance: `✅ Attendance: ${result.count} records`,
+        roster: `📋 Roster: ${result.count} students${sis}`,
+        export: `📥 Export: ${result.count} students${sis}`,
+        gradebook: `📊 Gradebook: ${result.count} students${sis}`,
+        attendance: `✅ Attendance: ${result.count} records${sis}`,
       };
-      pageInfo.textContent = labels[result.pageType] || `${result.count} records detected`;
+      pageInfo.textContent = labels[result.pageType] || `${result.count} records detected${sis}`;
       syncBtn.classList.remove('hidden');
       syncBtn.disabled = false;
       syncBtn.dataset.tabId = tab.id;
+
+      // Check for deep crawl links
+      const linkResult = await chrome.tabs.sendMessage(tab.id, { type: 'COUNT_LINKS' }).catch(() => null);
+      if (linkResult && linkResult.count > 0) {
+        deepBtn.classList.remove('hidden');
+        deepBtn.disabled = false;
+        deepBtn.dataset.tabId = tab.id;
+        deepHint.classList.remove('hidden');
+        deepHint.textContent = `Deep crawl: ${linkResult.count} student profiles available — pulls contacts, schedule, demographics, and more.`;
+      }
     } else {
-      pageInfo.textContent = 'PowerSchool page detected — no parseable data found';
+      pageInfo.textContent = 'SIS page detected — no parseable data found';
       syncBtn.classList.add('hidden');
+      deepBtn.classList.add('hidden');
     }
   } catch {
     pageInfo.textContent = 'Navigate to a PowerSchool page to sync';
     syncBtn.classList.add('hidden');
   }
 }
+
+const deepBtn = $('#deep-btn');
+const deepLabel = $('#deep-label');
+const deepHint = $('#deep-hint');
+const crawlStatus = $('#crawl-status');
+
+// Listen for crawl progress from background
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'CRAWL_PROGRESS') {
+    crawlStatus.textContent = `Crawling ${msg.current}/${msg.total}: ${msg.student}`;
+    crawlStatus.classList.remove('hidden');
+    progressBar.style.width = `${(msg.current / msg.total) * 100}%`;
+  }
+});
+
+// Deep crawl button
+deepBtn.addEventListener('click', async () => {
+  const tabId = parseInt(syncBtn.dataset.tabId);
+  const passphrase = syncPassphrase.value;
+
+  if (!passphrase) {
+    syncPassphrase.focus();
+    syncPassphrase.style.borderColor = '#ef4444';
+    setTimeout(() => { syncPassphrase.style.borderColor = ''; }, 2000);
+    return;
+  }
+
+  deepBtn.disabled = true;
+  syncBtn.disabled = true;
+  deepLabel.textContent = 'Crawling...';
+  statusDot.className = 'status-dot syncing';
+  syncProgress.classList.remove('hidden');
+  syncResult.classList.add('hidden');
+  crawlStatus.classList.remove('hidden');
+  crawlStatus.textContent = 'Starting deep crawl...';
+
+  try {
+    // Ask content script to deep crawl
+    const result = await chrome.tabs.sendMessage(tabId, { type: 'DEEP_CRAWL' });
+
+    progressBar.style.width = '100%';
+
+    if (result && result.count > 0) {
+      // Sync the deep results to Capsule
+      const syncRes = await chrome.runtime.sendMessage({
+        type: 'TRIGGER_DEEP_SYNC',
+        students: result.students,
+        passphrase,
+      });
+
+      crawlStatus.classList.add('hidden');
+      syncResult.textContent = `✅ Deep crawl: ${result.count} students with full profiles synced`;
+      syncResult.className = 'success';
+      statusDot.className = 'status-dot connected';
+    } else {
+      crawlStatus.classList.add('hidden');
+      syncResult.textContent = '❌ No student profile links found on this page';
+      syncResult.className = 'error';
+      statusDot.className = 'status-dot error';
+    }
+    syncResult.classList.remove('hidden');
+  } catch (err) {
+    crawlStatus.classList.add('hidden');
+    syncResult.textContent = `❌ ${err.message}`;
+    syncResult.className = 'error';
+    syncResult.classList.remove('hidden');
+    statusDot.className = 'status-dot error';
+  } finally {
+    deepBtn.disabled = false;
+    syncBtn.disabled = false;
+    deepLabel.textContent = '🔍 Deep Crawl';
+    setTimeout(() => {
+      syncProgress.classList.add('hidden');
+      progressBar.style.width = '0%';
+    }, 2000);
+    await refreshStatus();
+    await refreshSyncLog();
+  }
+});
 
 // Sync button
 syncBtn.addEventListener('click', async () => {

@@ -60,7 +60,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/content/parsers/*.js"],
+      "resources": ["src/content/parsers/*.js", "src/content/crawler.js"],
       "matches": [
         "https://*.powerschool.com/*",
         "https://*.infinitecampus.com/*",

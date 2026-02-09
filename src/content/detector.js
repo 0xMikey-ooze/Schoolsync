@@ -82,6 +82,22 @@
       parsePage(pageType).then(sendResponse);
       return true; // async response
     }
+    if (msg.type === 'DEEP_CRAWL') {
+      importCrawler().then(async (mod) => {
+        const results = await mod.deepCrawl((progress) => {
+          chrome.runtime.sendMessage({ type: 'CRAWL_PROGRESS', ...progress });
+        });
+        sendResponse({ students: results, count: results.length });
+      });
+      return true;
+    }
+    if (msg.type === 'COUNT_LINKS') {
+      importCrawler().then(mod => {
+        const links = mod.extractStudentLinks();
+        sendResponse({ count: links.length });
+      });
+      return true;
+    }
     if (msg.type === 'PARSE_CSV_TEXT') {
       // Background sends CSV text for parsing
       importCSVParser().then(mod => {
@@ -207,6 +223,9 @@
   }
   async function importCSVParser() {
     return import(chrome.runtime.getURL('src/content/parsers/export-csv.js'));
+  }
+  async function importCrawler() {
+    return import(chrome.runtime.getURL('src/content/crawler.js'));
   }
   async function importSISParser(sis) {
     const parserMap = {

@@ -85,6 +85,30 @@ input::placeholder { color: #555; }
 .btn-primary:hover { background: #5558e6; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.btn-row .btn-primary {
+  margin-top: 0;
+  flex: 1;
+}
+.btn-deep {
+  flex: 1;
+  padding: 10px;
+  background: #1e1b4b;
+  color: #a5b4fc;
+  border: 1px solid #3730a3;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-deep:hover { background: #2e1065; }
+.btn-deep:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .btn-danger {
   background: transparent;
   color: #ef4444;

@@ -55,12 +55,19 @@
       <div class="card" id="page-card">
         <h3>Current Page</h3>
         <div id="page-info" class="meta">No PowerSchool page detected</div>
-        <button id="sync-btn" class="btn-primary hidden" disabled>
-          <span id="sync-label">Sync Now</span>
-        </button>
+        <div class="btn-row">
+          <button id="sync-btn" class="btn-primary hidden" disabled>
+            <span id="sync-label">Quick Sync</span>
+          </button>
+          <button id="deep-btn" class="btn-deep hidden" disabled>
+            <span id="deep-label">🔍 Deep Crawl</span>
+          </button>
+        </div>
+        <p id="deep-hint" class="hint hidden">Deep crawl visits each student's profile page to pull all available data (contacts, schedule, demographics, etc.)</p>
         <div id="sync-progress" class="progress hidden">
           <div class="progress-bar" id="progress-bar"></div>
         </div>
+        <p id="crawl-status" class="meta hidden"></p>
         <p id="sync-result" class="hidden"></p>
       </div>
 
