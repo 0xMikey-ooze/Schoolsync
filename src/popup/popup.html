@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=400">
+  <title>SchoolSync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <span class="logo-icon">🔄</span>
+        <h1>SchoolSync</h1>
+      </div>
+      <span id="version" class="version">v1.0</span>
+    </header>
+
+    <!-- Not Configured State -->
+    <div id="setup-view" class="view">
+      <div class="card">
+        <h2>Connect to Capsule</h2>
+        <p class="hint">Enter your Capsule API endpoint and token to start syncing.</p>
+        <form id="setup-form">
+          <label for="endpoint">Capsule Endpoint</label>
+          <input type="url" id="endpoint" placeholder="https://your-school.capsule.ai" required>
+          
+          <label for="token">API Token</label>
+          <input type="password" id="token" placeholder="cap_..." required>
+          
+          <label for="passphrase">Encryption Passphrase</label>
+          <input type="password" id="passphrase" placeholder="Used to encrypt your token locally" required>
+          <p class="hint">This passphrase encrypts your token on-device. We never see it.</p>
+          
+          <button type="submit" class="btn-primary" id="connect-btn">Connect</button>
+          <p id="setup-error" class="error hidden"></p>
+          <p id="setup-success" class="success hidden"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="main-view" class="view hidden">
+      <!-- Status Card -->
+      <div class="card status-card">
+        <div class="status-row">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">Checking...</span>
+        </div>
+        <div id="last-sync" class="meta"></div>
+      </div>
+
+      <!-- Current Page -->
+      <div class="card" id="page-card">
+        <h3>Current Page</h3>
+        <div id="page-info" class="meta">No PowerSchool page detected</div>
+        <button id="sync-btn" class="btn-primary hidden" disabled>
+          <span id="sync-label">Sync Now</span>
+        </button>
+        <div id="sync-progress" class="progress hidden">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p id="sync-result" class="hidden"></p>
+      </div>
+
+      <!-- Passphrase (needed for sync) -->
+      <div class="card" id="passphrase-card">
+        <label for="sync-passphrase">Passphrase</label>
+        <input type="password" id="sync-passphrase" placeholder="Enter to unlock sync">
+      </div>
+
+      <!-- Schedule -->
+      <div class="card">
+        <h3>Auto-Sync</h3>
+        <div class="toggle-row">
+          <label for="auto-sync">Enable scheduled sync</label>
+          <input type="checkbox" id="auto-sync">
+        </div>
+        <div id="schedule-options" class="hidden">
+          <label for="interval">Sync every</label>
+          <select id="interval">
+            <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24" selected>24 hours</option>
+            <option value="168">Weekly</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sync Log -->
+      <div class="card">
+        <h3>Recent Syncs</h3>
+        <div id="sync-log" class="log"></div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <button id="disconnect-btn" class="btn-danger">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
