@@ -76,6 +76,10 @@
         "https://*.schoology.com/*",
         "https://*.instructure.com/*"
       ]
+    },
+    {
+      "resources": ["src/dashboard/dashboard.html", "src/dashboard/dashboard.js", "src/dashboard/dashboard.css", "src/lib/sprites-dashboard.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "content_security_policy": {
