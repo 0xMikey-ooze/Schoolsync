@@ -1,0 +1,38 @@
+[
+  {
+    "id": "canvas-assignment-1001",
+    "title": "Algebra II Quadratic Models Problem Set",
+    "due_at": "2026-05-03T23:59:00-04:00",
+    "course_name": "Algebra II"
+  },
+  {
+    "id": "canvas-assignment-1002",
+    "title": "Biology Cell Respiration Lab Report",
+    "due_at": "2026-05-08T17:00:00-04:00",
+    "course_name": "Honors Biology"
+  },
+  {
+    "id": "canvas-assignment-1003",
+    "title": "World History Primary Source Reflection",
+    "due_at": "2026-05-10T11:30:00-04:00",
+    "course_name": "World History"
+  },
+  {
+    "id": "canvas-assignment-1004",
+    "title": "English Literature Seminar Notes",
+    "due_at": "2026-05-10T22:00:00-04:00",
+    "course_name": "English Literature"
+  },
+  {
+    "id": "canvas-assignment-1005",
+    "title": "Chemistry Stoichiometry Quiz Review",
+    "due_at": "2026-05-12T09:00:00-04:00",
+    "course_name": "Chemistry"
+  },
+  {
+    "id": "canvas-assignment-1006",
+    "title": "Geometry Coordinate Proof Project",
+    "due_at": "2026-05-15T15:15:00-04:00",
+    "course_name": "Geometry"
+  }
+]
