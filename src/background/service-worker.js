@@ -3,7 +3,17 @@
  * intercepts CSV downloads.
  */
 
+import { migrate as migrateSpritesStore } from '../lib/sprites-store.js';
+import { attachOAuthHandlers } from '../lib/sprites-auth.js';
+
 const ALARM_NAME = 'schoolsync-auto';
+
+// Sprites.dev OAuth wiring. The PRD's "/auth/sprites/url" and
+// "/auth/sprites/callback" routes are realised here as runtime messages so
+// the popup/options page can drive the PKCE flow without a server. Storage
+// migrations are idempotent — safe to run on every service worker wake.
+migrateSpritesStore().catch((err) => console.error('[sprites] migrate failed', err));
+attachOAuthHandlers();
 
 // Track detected pages across tabs
 const detectedPages = new Map();

@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "alarms",
-    "offscreen"
+    "offscreen",
+    "identity"
   ],
   "host_permissions": [
     "https://*.powerschool.com/*",
@@ -19,7 +20,9 @@
     "https://*.aeries.net/*",
     "https://*.genesisedu.com/*",
     "https://*.schoology.com/*",
-    "https://*.instructure.com/*"
+    "https://*.instructure.com/*",
+    "https://sprites.dev/*",
+    "https://*.sprites.dev/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
@@ -76,6 +79,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://*.capsule.ai https://localhost:*;"
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://*.capsule.ai https://sprites.dev https://*.sprites.dev https://localhost:*;"
   }
 }
