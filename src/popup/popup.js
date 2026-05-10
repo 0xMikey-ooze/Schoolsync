@@ -1,12 +1,35 @@
 /**
  * SchoolSync Popup — UI controller for the extension popup.
+ *
+ * The popup now serves two flows:
+ *   1. Sprites.dev OAuth sign-in (PRD Lane 4). Gates everything else: if the
+ *      user has not completed sprites.dev consent, only the signin-view is
+ *      visible. Sign-in talks to the service-worker handlers via
+ *      `src/lib/sprites-ui.js` and never touches access tokens directly.
+ *   2. Capsule sync (the existing SchoolSync flow). Surfaces only after
+ *      sprites sign-in so the popup has a single auth surface.
  */
+
+import {
+  runOAuthFlow,
+  getSpritesUserId,
+  clearSpritesUserId,
+  withReauthGuard,
+} from '../lib/sprites-ui.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 // Views
+const signinView = $('#signin-view');
 const setupView = $('#setup-view');
 const mainView = $('#main-view');
+
+// Sprites sign-in elements
+const signinBtn = $('#signin-btn');
+const signinLabel = $('#signin-label');
+const signinPending = $('#signin-pending');
+const signinAuthorizing = $('#signin-authorizing');
+const signinError = $('#signin-error');
 
 // Setup elements
 const setupForm = $('#setup-form');
@@ -36,27 +59,102 @@ const disconnectBtn = $('#disconnect-btn');
 
 // --- Init ---
 
+/**
+ * Decide which view to show on popup open. The sprites.dev sign-in is the
+ * outermost gate: without a `sprites_user_id` in storage we render only
+ * the signin-view, regardless of Capsule setup state. After sign-in the
+ * Capsule setup-vs-main decision is unchanged from before.
+ */
 async function init() {
+  const userId = await getSpritesUserId();
+  if (!userId) {
+    showSigninView();
+    return;
+  }
   const config = await chrome.storage.local.get(['capsule_endpoint', 'encrypted_token']);
-
   if (config.capsule_endpoint && config.encrypted_token) {
-    showMainView();
+    await showMainView();
   } else {
     showSetupView();
   }
 }
 
+function showSigninView() {
+  signinView.classList.remove('hidden');
+  setupView.classList.add('hidden');
+  mainView.classList.add('hidden');
+  // Reset transient sign-in state so a re-entry from reauth looks clean.
+  signinPending.classList.add('hidden');
+  signinAuthorizing.classList.add('hidden');
+  signinError.classList.add('hidden');
+  signinBtn.disabled = false;
+  signinLabel.textContent = 'Sign in with sprites.dev';
+}
+
 function showSetupView() {
+  signinView.classList.add('hidden');
   setupView.classList.remove('hidden');
   mainView.classList.add('hidden');
 }
 
 async function showMainView() {
+  signinView.classList.add('hidden');
   setupView.classList.add('hidden');
   mainView.classList.remove('hidden');
   await refreshStatus();
   await refreshSyncLog();
   await detectCurrentPage();
+}
+
+// --- Sprites.dev sign-in ---
+
+/**
+ * Click handler for "Sign in with sprites.dev". Drives the full PKCE flow
+ * through `src/lib/sprites-ui.js` and only navigates onward after the
+ * service worker confirms a `user_id`. The intermediate "Authorizing…"
+ * note appears only when the callback exchange takes longer than 500ms,
+ * matching the PRD acceptance criterion.
+ */
+signinBtn.addEventListener('click', async () => {
+  signinError.classList.add('hidden');
+  signinError.textContent = '';
+  signinAuthorizing.classList.add('hidden');
+  signinPending.classList.remove('hidden');
+  signinBtn.disabled = true;
+  signinLabel.textContent = 'Signing in…';
+
+  try {
+    await runOAuthFlow({
+      onAuthorizing: () => {
+        signinPending.classList.add('hidden');
+        signinAuthorizing.classList.remove('hidden');
+      },
+    });
+    // Sign-in succeeded. Hand off to the existing setup/main router.
+    signinPending.classList.add('hidden');
+    signinAuthorizing.classList.add('hidden');
+    await init();
+  } catch (err) {
+    signinPending.classList.add('hidden');
+    signinAuthorizing.classList.add('hidden');
+    showError(signinError, err?.message || 'Sign in failed. Please try again.');
+  } finally {
+    signinBtn.disabled = false;
+    signinLabel.textContent = 'Sign in with sprites.dev';
+  }
+});
+
+/**
+ * Public reauth guard for any popup-side API call that hits a sprites.dev
+ * endpoint. Sibling lanes (polling worker, dashboard) call this so the
+ * popup automatically returns to sign-in when a 401-equivalent surfaces.
+ *
+ * @template T
+ * @param {() => Promise<T>} call
+ * @returns {Promise<T>}
+ */
+export async function callWithReauth(call) {
+  return withReauthGuard(call, { onReauth: () => showSigninView() });
 }
 
 // --- Setup ---
@@ -358,12 +456,16 @@ intervalSelect.addEventListener('change', async () => {
   }
 });
 
-// Disconnect
+// Disconnect: clears Capsule config, alarms, AND the sprites.dev popup
+// session pointer so the user lands back on the sign-in gate. The encrypted
+// user_sessions blob is wiped here as part of `storage.local.clear()`,
+// which is the desired behaviour for an explicit disconnect (vs the silent
+// reauth path, which only forgets the popup-side identifier).
 disconnectBtn.addEventListener('click', async () => {
   if (!confirm('Disconnect from Capsule? Your synced data will remain in Capsule.')) return;
   await chrome.storage.local.clear();
   await chrome.alarms.clear('schoolsync-auto');
-  showSetupView();
+  showSigninView();
 });
 
 // Sync log
