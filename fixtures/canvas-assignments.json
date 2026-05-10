@@ -1,0 +1,81 @@
+{
+  "_comment": "Fixture of Canvas-shaped assignments used to drive LLM pipeline verification. Mix of past-due and future-due items across multiple courses/subjects. Dates are anchored relative to nowISO so the fixture stays valid as time advances; pipeline test substitutes nowISO into raw.now before invoking the categorizer.",
+  "nowISO": "2026-05-09T12:00:00Z",
+  "assignments": [
+    {
+      "id": "asg_101",
+      "name": "Algebra II — Quadratic Functions Worksheet",
+      "course": { "id": "c_math", "name": "Algebra II — Period 3" },
+      "due_at": "2026-05-01T23:59:00Z",
+      "points_possible": 20,
+      "html_url": "https://example.instructure.com/courses/c_math/assignments/101",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    },
+    {
+      "id": "asg_102",
+      "name": "Algebra II — Chapter 7 Test",
+      "course": { "id": "c_math", "name": "Algebra II — Period 3" },
+      "due_at": "2026-05-15T23:59:00Z",
+      "points_possible": 100,
+      "html_url": "https://example.instructure.com/courses/c_math/assignments/102",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    },
+    {
+      "id": "asg_201",
+      "name": "Biology Lab Report — Photosynthesis",
+      "course": { "id": "c_bio", "name": "Honors Biology" },
+      "due_at": "2026-04-28T23:59:00Z",
+      "points_possible": 50,
+      "html_url": "https://example.instructure.com/courses/c_bio/assignments/201",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    },
+    {
+      "id": "asg_202",
+      "name": "Biology — Cell Structures Quiz",
+      "course": { "id": "c_bio", "name": "Honors Biology" },
+      "due_at": "2026-05-12T23:59:00Z",
+      "points_possible": 25,
+      "html_url": "https://example.instructure.com/courses/c_bio/assignments/202",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    },
+    {
+      "id": "asg_301",
+      "name": "English — Essay on The Great Gatsby",
+      "course": { "id": "c_eng", "name": "English Literature 11" },
+      "due_at": "2026-05-20T23:59:00Z",
+      "points_possible": 40,
+      "html_url": "https://example.instructure.com/courses/c_eng/assignments/301",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    },
+    {
+      "id": "asg_302",
+      "name": "English — Vocabulary Quiz Unit 9",
+      "course": { "id": "c_eng", "name": "English Literature 11" },
+      "due_at": "2026-04-30T23:59:00Z",
+      "points_possible": 15,
+      "html_url": "https://example.instructure.com/courses/c_eng/assignments/302",
+      "submission": { "submitted_at": "2026-04-29T10:00:00Z", "workflow_state": "submitted" }
+    },
+    {
+      "id": "asg_401",
+      "name": "U.S. History — Civil War DBQ",
+      "course": { "id": "c_hist", "name": "U.S. History" },
+      "due_at": "2026-05-10T23:59:00Z",
+      "points_possible": 30,
+      "html_url": "https://example.instructure.com/courses/c_hist/assignments/401",
+      "submission": { "submitted_at": null, "workflow_state": "unsubmitted" }
+    }
+  ],
+  "_expectations": {
+    "overdueIds": ["asg_101", "asg_201"],
+    "_overdueIdsNote": "asg_302 is past-due BUT submitted, so it must NOT be flagged overdue. asg_401 is due today (2026-05-10) — must NOT be flagged overdue when nowISO=2026-05-09T12:00Z.",
+    "subjectsExpected": ["Math", "Science", "English", "History"],
+    "subjectBuckets": {
+      "Math": ["asg_101", "asg_102"],
+      "Science": ["asg_201", "asg_202"],
+      "English": ["asg_301", "asg_302"],
+      "History": ["asg_401"]
+    },
+    "deadlineSummaryNonEmpty": true
+  }
+}
