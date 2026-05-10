@@ -17,8 +17,27 @@
       <span id="version" class="version">v1.0</span>
     </header>
 
+    <!-- Sprites.dev Sign-in (PRD Lane 4) -->
+    <div id="signin-view" class="view hidden">
+      <div class="card">
+        <h2>Sign in with sprites.dev</h2>
+        <p class="hint">
+          Connect your sprites.dev account so SchoolSync can sync your assignments and surface
+          deadlines.
+        </p>
+
+        <button type="button" class="btn-primary" id="signin-btn">
+          <span id="signin-label">Sign in with sprites.dev</span>
+        </button>
+
+        <p id="signin-pending" class="hint hidden">Opening sprites.dev sign-in…</p>
+        <p id="signin-authorizing" class="hint hidden">Authorizing… finishing sign-in.</p>
+        <p id="signin-error" class="error hidden"></p>
+      </div>
+    </div>
+
     <!-- Not Configured State -->
-    <div id="setup-view" class="view">
+    <div id="setup-view" class="view hidden">
       <div class="card">
         <h2>Connect to Capsule</h2>
         <p class="hint">Enter your Capsule API endpoint and token to start syncing.</p>
