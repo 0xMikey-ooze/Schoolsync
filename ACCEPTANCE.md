@@ -82,3 +82,57 @@ lands `server/orchestrator/llm-pipeline.{mjs,js}` (or `src/lib/`) implementing
 the export above, then re-run `node tests/llm-pipeline.test.mjs`; or
 (b) accept that the grafted PRD does not match the repository and reset the
 PRD to match the Chrome extension's actual capabilities.
+
+---
+
+## Sub-task 2/4 — Recovery 1 addendum: harness self-validation
+
+To prove the harness assertions are achievable (not over-constrained) and to
+provide a behavioral spec for the upstream pipeline task, recovery added:
+
+- **`tests/_reference-pipeline.mjs`** — a reference `processAssignments`
+  implementation that lives **outside** the source paths the harness scans
+  (`server/orchestrator/llm-pipeline.*`, `src/lib/llm-pipeline.*`). Its
+  presence does NOT silently turn the default harness run green.
+- **`LLM_PIPELINE_PATH` env override** in `tests/llm-pipeline.test.mjs` —
+  when set, the harness imports the override path instead of scanning the
+  source candidates. Used here to point the harness at the reference impl.
+
+### Two-mode verification result (recovery run)
+
+Default (source-path scan, expected red):
+```
+$ node tests/llm-pipeline.test.mjs
+MISSING_PIPELINE no processAssignments export found at any expected path.
+EXIT_DEFAULT=2
+```
+
+Reference impl (env override, expected green):
+```
+$ LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/llm-pipeline.test.mjs
+Using pipeline at tests/_reference-pipeline.mjs
+PASS overdue flags match expected set asg_101,asg_201 (got asg_101,asg_201)
+PASS subjectBuckets present
+PASS subject bucket Math non-empty
+PASS subject bucket Math contains asg_101,asg_102
+PASS subject bucket Science non-empty
+PASS subject bucket Science contains asg_201,asg_202
+PASS subject bucket English non-empty
+PASS subject bucket English contains asg_301,asg_302
+PASS subject bucket History non-empty
+PASS subject bucket History contains asg_401
+PASS deadlineSummary is a non-empty string
+PASS first invocation called llmCall (saw 1)
+PASS second invocation hit cache; llmCall count unchanged (1 -> 1)
+ALL CHECKS PASSED
+EXIT_REF=0
+```
+
+This confirms: (1) the harness produces a deterministic red when the upstream
+module is absent, (2) the harness produces a deterministic green when a
+contract-conformant module is provided, and (3) the cache contract is
+verifiable via injected counter (1→1 across two identical invocations).
+
+The reference impl is not a substitute for the upstream task; it is a
+behavioral spec — the upstream module must implement the same contract at one
+of the source paths.

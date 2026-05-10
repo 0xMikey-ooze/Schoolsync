@@ -42,13 +42,18 @@ async function loadFixture() {
 }
 
 async function tryLoadPipeline() {
-  // Conventional locations the upstream task should publish to.
-  const candidates = [
-    'server/orchestrator/llm-pipeline.mjs',
-    'server/orchestrator/llm-pipeline.js',
-    'src/lib/llm-pipeline.mjs',
-    'src/lib/llm-pipeline.js',
-  ];
+  // Optional override for harness self-validation against a reference impl
+  // that intentionally lives outside the source path. Set
+  // LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs to exercise the green path.
+  const override = process.env.LLM_PIPELINE_PATH;
+  const candidates = override
+    ? [override]
+    : [
+        'server/orchestrator/llm-pipeline.mjs',
+        'server/orchestrator/llm-pipeline.js',
+        'src/lib/llm-pipeline.mjs',
+        'src/lib/llm-pipeline.js',
+      ];
   for (const rel of candidates) {
     try {
       const url = pathToFileURL(resolve(repoRoot, rel)).href;
