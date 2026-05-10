@@ -3,6 +3,13 @@
  * intercepts CSV downloads.
  */
 
+import {
+  SCHOOLSYNC_POLL_ALARM,
+  configureSchoolsyncPoll,
+  snapshotNow,
+  listSnapshots,
+} from '../lib/schoolsync-poll.js';
+
 const ALARM_NAME = 'schoolsync-auto';
 
 // Track detected pages across tabs
@@ -38,6 +45,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'GET_STATUS':
       getStatus().then(sendResponse);
+      return true;
+
+    case 'SCHOOLSYNC_FETCH_NOW':
+      snapshotNow({
+        source: 'on-demand',
+        detectedPages: Object.fromEntries(detectedPages),
+      }).then(sendResponse);
+      return true;
+
+    case 'SCHOOLSYNC_LIST_SNAPSHOTS':
+      listSnapshots().then(sendResponse);
       return true;
   }
 });
@@ -317,16 +335,31 @@ function watchForCSVDownload(sourceUrl) {
 // --- Scheduled Sync ---
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name !== ALARM_NAME) return;
-  // Auto-sync: find any PowerSchool tabs and sync them
-  const tabs = await chrome.tabs.query({ url: '*://*.powerschool.com/*' });
-  for (const tab of tabs) {
-    if (detectedPages.has(tab.id)) {
-      // Can't auto-sync without passphrase — just set badge
-      chrome.action.setBadgeText({ text: '⟳', tabId: tab.id });
+  if (alarm.name === ALARM_NAME) {
+    // Auto-sync: find any PowerSchool tabs and sync them
+    const tabs = await chrome.tabs.query({ url: '*://*.powerschool.com/*' });
+    for (const tab of tabs) {
+      if (detectedPages.has(tab.id)) {
+        // Can't auto-sync without passphrase — just set badge
+        chrome.action.setBadgeText({ text: '⟳', tabId: tab.id });
+      }
     }
+    return;
+  }
+  if (alarm.name === SCHOOLSYNC_POLL_ALARM) {
+    await snapshotNow({
+      source: 'periodic',
+      detectedPages: Object.fromEntries(detectedPages),
+    });
+    return;
   }
 });
+
+// Register the periodic Schoolsync poll on worker startup / install.
+chrome.runtime.onInstalled.addListener(() => { configureSchoolsyncPoll(); });
+chrome.runtime.onStartup?.addListener(() => { configureSchoolsyncPoll(); });
+// Also ensure the alarm exists when the service worker is woken for any reason.
+configureSchoolsyncPoll();
 
 /**
  * Set up or clear the auto-sync alarm.
