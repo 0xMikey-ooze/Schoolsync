@@ -9,6 +9,7 @@ import {
   attachAssignmentHandlers as attachSpritesAssignmentHandlers,
   installPollingAlarm as installSpritesPollingAlarm,
 } from '../lib/sprites-fetcher.js';
+import { attachPanelHandlers as attachSpritesPanelHandlers } from '../lib/sprites-panel-data.js';
 
 const ALARM_NAME = 'schoolsync-auto';
 
@@ -22,6 +23,7 @@ const ALARM_NAME = 'schoolsync-auto';
 migrateSpritesStore().catch((err) => console.error('[sprites] migrate failed', err));
 attachOAuthHandlers();
 attachSpritesAssignmentHandlers();
+attachSpritesPanelHandlers();
 installSpritesPollingAlarm();
 
 // Track detected pages across tabs

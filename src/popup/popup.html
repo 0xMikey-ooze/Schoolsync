@@ -101,6 +101,47 @@
         <div id="sync-log" class="log"></div>
       </div>
 
+      <!-- SchoolsyncPanel (PRD Lane 4 — UI: Assignment Dashboard) -->
+      <div class="card schoolsync-panel" id="schoolsync-panel-card">
+        <div class="schoolsync-header">
+          <h3>Schoolsync Assignments</h3>
+          <button id="schoolsync-refresh-btn" class="btn-mini" type="button">
+            <span id="schoolsync-refresh-label">Refresh</span>
+          </button>
+        </div>
+        <div id="schoolsync-last-synced" class="meta">Last synced: —</div>
+
+        <div id="schoolsync-auth-banner" class="schoolsync-banner hidden">
+          <p>Sign in with sprites.dev to see your assignments.</p>
+          <button id="schoolsync-connect-btn" class="btn-primary" type="button">
+            Connect via sprites.dev
+          </button>
+        </div>
+
+        <div id="schoolsync-loading" class="schoolsync-loading">
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+        </div>
+
+        <div id="schoolsync-error" class="schoolsync-error hidden">
+          <p id="schoolsync-error-message" class="error">Something went wrong.</p>
+          <button id="schoolsync-retry-btn" class="btn-mini" type="button">Retry</button>
+        </div>
+
+        <div id="schoolsync-empty" class="hint hidden">
+          No assignments synced yet. Try Refresh.
+        </div>
+
+        <div id="schoolsync-overdue-section" class="schoolsync-overdue hidden">
+          <div class="schoolsync-overdue-label">Overdue</div>
+          <div id="schoolsync-overdue-list"></div>
+        </div>
+
+        <div id="schoolsync-categorized" class="schoolsync-categorized"></div>
+
+        <p id="schoolsync-deadline-summary" class="schoolsync-summary hidden"></p>
+      </div>
+
       <!-- Footer -->
       <div class="footer">
         <button id="disconnect-btn" class="btn-danger">Disconnect</button>

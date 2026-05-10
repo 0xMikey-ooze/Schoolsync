@@ -399,5 +399,254 @@ function showError(el, msg) {
   el.classList.remove('hidden');
 }
 
+// --- SchoolsyncPanel (PRD Lane 4 — UI: Assignment Dashboard) ---
+//
+// The PRD describes a Next.js + tRPC + react-query dashboard panel; in this
+// MV3 popup we run the equivalent logic against chrome.runtime messages. The
+// data layer lives in src/lib/sprites-panel-data.js and is reachable via the
+// SPRITES_GET_PANEL_DATA / SPRITES_REFRESH_NOW message contracts.
+//
+// The panel renders four explicit states (no silent blanks):
+//   1. unauthenticated  → "Connect via sprites.dev" CTA
+//   2. loading          → skeleton placeholder cards
+//   3. error            → inline error + Retry button
+//   4. ok / empty       → subject-grouped cards + overdue + summary
+
+import { formatLastSynced } from '../lib/sprites-panel-data.js';
+
+const schoolsyncRefreshBtn = $('#schoolsync-refresh-btn');
+const schoolsyncRefreshLabel = $('#schoolsync-refresh-label');
+const schoolsyncLastSynced = $('#schoolsync-last-synced');
+const schoolsyncAuthBanner = $('#schoolsync-auth-banner');
+const schoolsyncConnectBtn = $('#schoolsync-connect-btn');
+const schoolsyncLoading = $('#schoolsync-loading');
+const schoolsyncError = $('#schoolsync-error');
+const schoolsyncErrorMessage = $('#schoolsync-error-message');
+const schoolsyncRetryBtn = $('#schoolsync-retry-btn');
+const schoolsyncEmpty = $('#schoolsync-empty');
+const schoolsyncOverdueSection = $('#schoolsync-overdue-section');
+const schoolsyncOverdueList = $('#schoolsync-overdue-list');
+const schoolsyncCategorized = $('#schoolsync-categorized');
+const schoolsyncDeadlineSummary = $('#schoolsync-deadline-summary');
+
+const PANEL_REFRESH_TICK_MS = 30_000;
+let panelLastSyncedAtIso = null;
+let panelTickerHandle = null;
+let panelRefreshInFlight = false;
+
+function panelMessage(msg) {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.sendMessage(msg, (reply) => {
+        const lastErr = chrome.runtime.lastError;
+        if (lastErr) reject(new Error(lastErr.message));
+        else resolve(reply);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function setPanelState(state) {
+  // Mutually exclusive primary blocks. Other blocks (overdue, categorized,
+  // summary, last-synced) are managed independently from the resolved data.
+  schoolsyncAuthBanner.classList.toggle('hidden', state !== 'unauthenticated');
+  schoolsyncLoading.classList.toggle('hidden', state !== 'loading');
+  schoolsyncError.classList.toggle('hidden', state !== 'error');
+  schoolsyncEmpty.classList.toggle('hidden', state !== 'empty');
+  if (state !== 'ok' && state !== 'empty') {
+    schoolsyncOverdueSection.classList.add('hidden');
+    schoolsyncCategorized.innerHTML = '';
+    schoolsyncDeadlineSummary.classList.add('hidden');
+    schoolsyncDeadlineSummary.textContent = '';
+  }
+  // Refresh button is disabled in unauthenticated and loading-of-empty states
+  // but always reachable in error so the user can retry without the inline button.
+  schoolsyncRefreshBtn.disabled = state === 'unauthenticated' || panelRefreshInFlight;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatDueBadge(dueIso) {
+  const t = Date.parse(dueIso);
+  if (!Number.isFinite(t)) return 'Due —';
+  const d = new Date(t);
+  return `Due ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
+
+function renderOverdue(overdueItems) {
+  if (!overdueItems?.length) {
+    schoolsyncOverdueSection.classList.add('hidden');
+    schoolsyncOverdueList.innerHTML = '';
+    return;
+  }
+  schoolsyncOverdueSection.classList.remove('hidden');
+  schoolsyncOverdueList.innerHTML = overdueItems
+    .map(
+      (a) => `
+    <div class="schoolsync-overdue-item">
+      <span>${escapeHtml(a.title)} <span style="color:#a08080">· ${escapeHtml(a.subject || 'Unknown')}</span></span>
+      <span class="due">${escapeHtml(formatDueBadge(a.dueDate))}</span>
+    </div>`,
+    )
+    .join('');
+}
+
+function renderCategorized(groups) {
+  if (!groups?.length) {
+    schoolsyncCategorized.innerHTML = '';
+    return;
+  }
+  schoolsyncCategorized.innerHTML = groups
+    .map(
+      (g) => `
+    <div class="schoolsync-subject">
+      <div class="schoolsync-subject-name">${escapeHtml(g.subject)}</div>
+      ${(g.items || [])
+        .map(
+          (a) => `
+        <div class="schoolsync-assignment">
+          <span>${escapeHtml(a.title)}</span>
+          <span class="due-badge">${escapeHtml(formatDueBadge(a.dueDate))}</span>
+        </div>`,
+        )
+        .join('')}
+    </div>`,
+    )
+    .join('');
+}
+
+function renderDeadlineSummary(text) {
+  if (!text) {
+    schoolsyncDeadlineSummary.classList.add('hidden');
+    schoolsyncDeadlineSummary.textContent = '';
+    return;
+  }
+  schoolsyncDeadlineSummary.classList.remove('hidden');
+  schoolsyncDeadlineSummary.textContent = text;
+}
+
+function tickLastSynced() {
+  schoolsyncLastSynced.textContent = panelLastSyncedAtIso
+    ? formatLastSynced(panelLastSyncedAtIso, Date.now())
+    : 'Last synced: —';
+}
+
+function startLastSyncedTicker() {
+  if (panelTickerHandle) return;
+  panelTickerHandle = setInterval(tickLastSynced, PANEL_REFRESH_TICK_MS);
+}
+
+async function loadSchoolsyncPanel({ showLoading = true } = {}) {
+  if (showLoading) setPanelState('loading');
+  try {
+    const reply = await panelMessage({ type: 'SPRITES_GET_PANEL_DATA' });
+    if (!reply?.ok) throw new Error(reply?.error || 'panel data unavailable');
+    const data = reply.data;
+    panelLastSyncedAtIso = data.lastSyncedAt;
+    tickLastSynced();
+    if (data.status === 'unauthenticated') {
+      setPanelState('unauthenticated');
+      return;
+    }
+    renderOverdue(data.overdue);
+    renderCategorized(data.categorized);
+    renderDeadlineSummary(data.deadlineSummary);
+    setPanelState(data.status === 'empty' ? 'empty' : 'ok');
+  } catch (err) {
+    schoolsyncErrorMessage.textContent = `Could not load assignments: ${err.message}`;
+    setPanelState('error');
+  }
+}
+
+async function handleSchoolsyncRefresh() {
+  if (panelRefreshInFlight) return;
+  panelRefreshInFlight = true;
+  schoolsyncRefreshBtn.classList.add('is-loading');
+  schoolsyncRefreshLabel.textContent = 'Refreshing';
+  schoolsyncRefreshBtn.disabled = true;
+  try {
+    // Resolve the active user via the panel data first; the refresh message
+    // requires an explicit user_id per the Lane 3 contract.
+    const probe = await panelMessage({ type: 'SPRITES_GET_PANEL_DATA' });
+    const userId = probe?.ok ? probe.data?.userId : null;
+    if (!userId) {
+      setPanelState('unauthenticated');
+      return;
+    }
+    const refresh = await panelMessage({ type: 'SPRITES_REFRESH_NOW', user_id: userId });
+    if (refresh?.reauth) {
+      setPanelState('unauthenticated');
+      return;
+    }
+    if (!refresh?.ok) {
+      throw new Error(refresh?.error || 'refresh failed');
+    }
+    await loadSchoolsyncPanel({ showLoading: false });
+  } catch (err) {
+    schoolsyncErrorMessage.textContent = `Refresh failed: ${err.message}`;
+    setPanelState('error');
+  } finally {
+    panelRefreshInFlight = false;
+    schoolsyncRefreshBtn.classList.remove('is-loading');
+    schoolsyncRefreshLabel.textContent = 'Refresh';
+    schoolsyncRefreshBtn.disabled = false;
+  }
+}
+
+function handleSchoolsyncConnect() {
+  // Lane 2 (sprites/auth-session-backend) attaches a 'SPRITES_OAUTH_START'
+  // handler that drives chrome.identity.launchWebAuthFlow. Lane 4's sign-in UI
+  // panel exposes the same flow. From this dashboard panel we route the user
+  // there by exposing the existing #signin-view if it is present, falling back
+  // to dispatching the OAuth-start message directly.
+  const signinView = document.getElementById('signin-view');
+  if (signinView) {
+    document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
+    signinView.classList.remove('hidden');
+    return;
+  }
+  // No signin-view yet (Lane 4 sign-in PR not merged) — fall back to direct
+  // message dispatch so the dashboard is still actionable.
+  panelMessage({ type: 'SPRITES_OAUTH_START' }).catch(() => {
+    schoolsyncErrorMessage.textContent =
+      'Sign-in flow unavailable. Open the sprites.dev sign-in card.';
+    setPanelState('error');
+  });
+}
+
+if (schoolsyncRefreshBtn) {
+  schoolsyncRefreshBtn.addEventListener('click', handleSchoolsyncRefresh);
+  schoolsyncRetryBtn.addEventListener('click', () => loadSchoolsyncPanel());
+  schoolsyncConnectBtn.addEventListener('click', handleSchoolsyncConnect);
+
+  // Lane 3's polling worker emits no SSE/invalidation broadcast inside an MV3
+  // worker; chrome.storage.onChanged is the equivalent signal. When the
+  // raw_assignments_cache or processed_assignments_cache row for the active
+  // user is rewritten, refetch the panel without a manual reload.
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== 'local') return;
+    const touchedAssignments = Object.keys(changes).some(
+      (k) =>
+        k.startsWith('sprites:row:raw_assignments_cache:') ||
+        k.startsWith('sprites:row:processed_assignments_cache:'),
+    );
+    if (touchedAssignments) {
+      loadSchoolsyncPanel({ showLoading: false });
+    }
+  });
+
+  startLastSyncedTicker();
+  loadSchoolsyncPanel();
+}
+
 // Go
 init();
