@@ -204,6 +204,13 @@ input[type="checkbox"]:checked::after { transform: translateX(16px); background:
 .log-entry.error .count { color: #ef4444; }
 .log-empty { color: #555; font-size: 12px; font-style: italic; }
 
+/* Sign-in view (sprites.dev) */
+#signin-view .card { text-align: center; }
+#signin-view .hint { margin-bottom: 14px; color: #aaa; }
+#signin-view #signin-btn { margin: 4px 0; width: 100%; }
+#signin-view #signin-pending,
+#signin-view #signin-authorizing { margin-top: 10px; color: #6366f1; font-size: 12px; }
+
 /* Utility */
 .hidden { display: none !important; }
 .error { color: #ef4444; font-size: 12px; margin-top: 8px; }
