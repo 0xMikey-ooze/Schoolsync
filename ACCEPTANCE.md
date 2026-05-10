@@ -136,3 +136,103 @@ verifiable via injected counter (1→1 across two identical invocations).
 The reference impl is not a substitute for the upstream task; it is a
 behavioral spec — the upstream module must implement the same contract at one
 of the source paths.
+
+---
+
+## LLM Pipeline Verification
+
+**Sub-task:** 4/4 of "LLM Pipeline Correctness & Cache Verification"
+**Branch:** `team/llm-cache-verify`
+**Run date (UTC):** 2026-05-10
+**Status:** GREEN against reference impl; RED against absent production source (documented contract).
+
+### Fixture
+
+- Path: `fixtures/canvas-assignments.json`
+- Anchored at `nowISO = 2026-05-09T12:00:00Z`
+- 7 Canvas-shaped assignments across 4 subjects (Math, Science, English, History)
+- Mix of past-due/future-due, plus one past-due-but-submitted (`asg_302`) and one same-day item (`asg_401`) used by sibling correctness checks.
+
+### Test commands
+
+Focused cache-hit test (this sub-task's deliverable):
+```
+node tests/cache-hit.test.mjs
+LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/cache-hit.test.mjs
+```
+
+Broader correctness + cache-hit harness (sibling sub 3/4):
+```
+node tests/llm-pipeline.test.mjs
+LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/llm-pipeline.test.mjs
+```
+
+### Sample correctness output
+
+```
+$ LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/llm-pipeline.test.mjs
+Using pipeline at tests/_reference-pipeline.mjs
+PASS overdue flags match expected set asg_101,asg_201 (got asg_101,asg_201)
+PASS subjectBuckets present
+PASS subject bucket Math non-empty
+PASS subject bucket Math contains asg_101,asg_102
+PASS subject bucket Science non-empty
+PASS subject bucket Science contains asg_201,asg_202
+PASS subject bucket English non-empty
+PASS subject bucket English contains asg_301,asg_302
+PASS subject bucket History non-empty
+PASS subject bucket History contains asg_401
+PASS deadlineSummary is a non-empty string
+PASS first invocation called llmCall (saw 1)
+PASS second invocation hit cache; llmCall count unchanged (1 -> 1)
+ALL CHECKS PASSED
+```
+
+### Cache-hit evidence (counter-based, not log-scrape)
+
+```
+$ LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/cache-hit.test.mjs
+Using pipeline at tests/_reference-pipeline.mjs
+PASS first invocation called llmCall exactly once (saw 1)
+PASS second invocation hit cache; llmCall counter unchanged (1 -> 1)
+PASS cache key includes nowISO; different now triggers re-invocation (1 -> 2)
+
+CACHE-HIT VERIFIED (counter 1 -> 1 unchanged across identical inputs)
+```
+
+Exit code: `0`.
+
+The cache-hit assertion is implemented as an injected `llmCall` counter, not
+as log-scraping or a mock side-effect, so the verdict is binary and does not
+depend on log format. A third call with a different `nowISO` is added as a
+guard against a degenerate "always return cached" implementation that would
+otherwise satisfy the counter assertion vacuously.
+
+### Default-mode (red) evidence
+
+When no production source pipeline is published, the test exits cleanly with
+code `2` and prints the documented contract:
+
+```
+$ node tests/cache-hit.test.mjs
+MISSING_PIPELINE no processAssignments export found.
+Set LLM_PIPELINE_PATH or land src/lib/llm-pipeline.{mjs,js} or server/orchestrator/llm-pipeline.{mjs,js}.
+```
+
+This is intentional: until the upstream pipeline lands at one of the
+documented source paths, the test stays red against production code. The
+green run above is harness self-validation against the reference behavioral
+spec; it is not a claim that production code is verified.
+
+### Forbidden paths avoided
+
+- `manifest.json`, `src/background/`, `src/content/parsers/`, `src/lib/sprites-store.js`, `src/lib/sprites-oauth.js` — untouched.
+- No migrations, schema, or auth code modified.
+- No secrets staged; no `.env` files written.
+- Did not implement the production `src/lib/llm-pipeline.*` source — that is sibling sub 1/4's scope; doing so here would falsely turn the default red green.
+
+### Confidence and escalation
+
+- Confidence: HIGH for the cache-hit contract assertion and ACCEPTANCE record.
+- Caveat: the green run validates the contract against `tests/_reference-pipeline.mjs`, not the production pipeline. End-to-end acceptance still requires sibling sub 1/4 (Scaffold LLM Pipeline Source Module) to land a module at one of the documented source paths so the default-mode run flips to green.
+- Escalation: accept this sub-task; re-run `node tests/cache-hit.test.mjs` (no env override) once sub 1/4 merges to confirm production cache-hit behavior.
