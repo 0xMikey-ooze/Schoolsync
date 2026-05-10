@@ -1,0 +1,38 @@
+# tests/pipeline-correctness.test.mjs — captured passing run
+#
+# Command:
+#   LLM_PIPELINE_PATH=tests/_reference-pipeline.mjs node tests/pipeline-correctness.test.mjs
+#
+# The LLM_PIPELINE_PATH override pins this run to the reference pipeline that
+# sub-task 1/4 ("Scaffold LLM Pipeline Source Module") will replace at the
+# canonical path (server/orchestrator/llm-pipeline.* or src/lib/llm-pipeline.*).
+# Once sub 1/4 lands, run without the env override:
+#   node tests/pipeline-correctness.test.mjs
+# and expect the same 16 PASS lines + ALL CORRECTNESS CHECKS PASSED.
+#
+# Exit status: 0
+#
+# ----- captured output -----
+
+Using pipeline: tests/_reference-pipeline.mjs
+Fixture nowISO: 2026-05-09T12:00:00Z
+Fixture assignments: 7
+
+PASS pipeline returned items for every fixture assignment (7/7)
+PASS past-due item asg_101 flagged overdue=true
+PASS past-due item asg_201 flagged overdue=true
+PASS non-overdue item asg_102 flagged overdue=false
+PASS non-overdue item asg_202 flagged overdue=false
+PASS non-overdue item asg_301 flagged overdue=false
+PASS non-overdue item asg_302 flagged overdue=false
+PASS non-overdue item asg_401 flagged overdue=false
+PASS subjectBuckets is a plain object
+PASS subjectBuckets has at least one key (got 4)
+PASS subjectBuckets["Math"] is a non-empty array (got 2)
+PASS subjectBuckets["Science"] is a non-empty array (got 2)
+PASS subjectBuckets["English"] is a non-empty array (got 2)
+PASS subjectBuckets["History"] is a non-empty array (got 1)
+PASS deadlineSummary is a non-empty string (got string, len=42)
+
+ALL CORRECTNESS CHECKS PASSED
+(llmCall invocations: 1 — cache verification is sub 4/4)
