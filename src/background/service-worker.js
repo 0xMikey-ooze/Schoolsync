@@ -5,15 +5,24 @@
 
 import { migrate as migrateSpritesStore } from '../lib/sprites-store.js';
 import { attachOAuthHandlers } from '../lib/sprites-auth.js';
+import {
+  attachAssignmentHandlers as attachSpritesAssignmentHandlers,
+  installPollingAlarm as installSpritesPollingAlarm,
+} from '../lib/sprites-fetcher.js';
 
 const ALARM_NAME = 'schoolsync-auto';
 
-// Sprites.dev OAuth wiring. The PRD's "/auth/sprites/url" and
-// "/auth/sprites/callback" routes are realised here as runtime messages so
-// the popup/options page can drive the PKCE flow without a server. Storage
-// migrations are idempotent — safe to run on every service worker wake.
+// Sprites.dev wiring. The PRD's "/auth/sprites/url",
+// "/auth/sprites/callback", "POST /api/refresh", and
+// "GET /api/assignments/raw" routes are realised here as runtime messages
+// so the popup/options page can drive PKCE + refresh without a server.
+// The 15-minute node-cron job is realised via chrome.alarms (see
+// installSpritesPollingAlarm). Storage migrations are idempotent — safe to
+// run on every service worker wake.
 migrateSpritesStore().catch((err) => console.error('[sprites] migrate failed', err));
 attachOAuthHandlers();
+attachSpritesAssignmentHandlers();
+installSpritesPollingAlarm();
 
 // Track detected pages across tabs
 const detectedPages = new Map();
